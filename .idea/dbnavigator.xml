@@ -40,7 +40,7 @@
     <connection id="cf4938d4-f6d4-49e2-9622-6d20554a6f9f" />
   </component>
   <component name="DBNavigator.Project.DatasetFilterManager">
-    <filter-actions connection-id="cf4938d4-f6d4-49e2-9622-6d20554a6f9f" dataset="nms.monitor" active-filter-id="6ab4e45c-9d57-479e-b3f8-9ecad9546ce2">
+    <filter-actions connection-id="cf4938d4-f6d4-49e2-9622-6d20554a6f9f" dataset="nms.monitor" active-filter-id="EMPTY_FILTER">
       <filter id="6ab4e45c-9d57-479e-b3f8-9ecad9546ce2" name="Filter 1" temporary="false" custom-name="false" type="basic" join-type="AND">
         <condition column="IP_address" operator="=" value="" active="true" />
       </filter>

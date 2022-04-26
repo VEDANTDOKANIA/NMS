@@ -32,17 +32,18 @@ public class Database extends AbstractVerticle {
                 }
                 if(value==1){
                     LOGGER.debug("IP already discovered");
-                    handler.reply("IP already discovered");
+                    handler.reply("already");
                 }else{
                     String query = INSERT.replace("table","monitor").
                             replace("columns","(IP_address,username,Password,Metric_type,Port) values (").
                             replace("data","\""+credentials.getString("IP_Address")+"\",\""+credentials.getString("username")
-                                    +"\",\""+credentials.getString("password")+"\",\""+credentials.getString("Metric_type")+"\","+credentials.getString("Port")+")");
+                                    +"\",\""+credentials.getString("password")+"\",\""+credentials.getString("Metric_Type")+"\","+credentials.getString("Port")+")");
                     statement.execute(query);
-                    handler.reply("Data entered into database \n Discovery Done successful");
+                    handler.reply("successful");
                 }
             }catch (Exception e){
                 LOGGER.debug("Exception Occurred :"+e.getMessage());
+                handler.reply(e.getMessage());
             }
 
         });
@@ -56,7 +57,6 @@ public class Database extends AbstractVerticle {
             LOGGER.debug("Database Connection Successful");
         } catch (Exception e) {
             LOGGER.error("Exception Occured :" + e.getMessage());
-
         }
         return connection;
     }

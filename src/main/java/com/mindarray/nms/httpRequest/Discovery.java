@@ -1,10 +1,7 @@
 package com.mindarray.nms.httpRequest;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.Router;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,48 +10,42 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
-public class DiscoveryRestApi {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DiscoveryRestApi.class);
-    public static Future<JsonObject> attach(Router router) {
+public class Discovery {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Discovery.class);
+    public static Future<JsonObject> initialDiscovery(JsonObject data) {
         LOGGER.debug("Discovery Rest API called");
-
         Promise<JsonObject> promise = Promise.promise();
-        router.route().method(HttpMethod.POST).path("/discovery").blockingHandler(context -> {
-            StringBuilder message = new StringBuilder();
-            StringBuilder exception = new StringBuilder();
-            var credentials = new JsonObject();
-             credentials = context.getBodyAsJson();
-            String error = verifyCredential(credentials);
-
-            //HttpServerResponse response = context.response();
-            //response.setChunked(true);
-            if(error.equals("No error")){
-                LOGGER.info("Credentials verified successfully");
-                message.append("Credentials verified successfully ");
-                boolean available = checkAvailability(credentials.getString("IP_Address"));
-                if(available){
-                    LOGGER.info("Initial Discovery successful");
-                    message.append("\nInitial Discovery successful");
-                    // Plugin call karke final discovery call karna baki hain
-                }else{
-                    exception.append("\nError : Initial Discovery failed");
-                    LOGGER.error("Initial Discovery failed");
-                }
-            }else{
-                exception.append(error);
-                LOGGER.error("Error :"+ error);
+        var credentials = data;
+        String error = verifyCredential(credentials);
+        StringBuilder message = new StringBuilder();
+        StringBuilder exception = new StringBuilder();
+        if (error.equals("No error")) {
+            LOGGER.info("Credentials verified successfully");
+            message.append("Credentials verified successfully. \n ");
+            boolean available = checkAvailability(credentials.getString("IP_Address"));
+            if (available) {
+                LOGGER.info("Initial Discovery successful");
+                message.append("Device is available");
+                // Plugin call karke final discovery call karna baki hain
+            } else {
+                exception.append("Error : Initial Discovery failed");
+                LOGGER.error("Initial Discovery failed");
             }
-           credentials.put("Message :",message.toString());
-            credentials.put("Error :", exception.toString());
-            promise.complete(credentials);
-
-        });
+        } else {
+            exception.append(error);
+            LOGGER.error("Error :" + error);
+        }
+        if(exception.isEmpty()){
+            exception.append("null");
+        }
+        credentials.put("Message", message.toString());
+        credentials.put("Error", exception.toString());
+        promise.complete(credentials);
         return promise.future();
-
     }
+
 
     private static boolean checkAvailability(String ip_address) {
         List<String> Commands = new ArrayList<>();
@@ -72,7 +63,7 @@ public class DiscoveryRestApi {
         try {
             process = builder.start();
         } catch (IOException e) {
-            System.out.println("Unable to start builder for discovery");
+            LOGGER.debug("Unable to start builder for discovery");
         }
         assert process != null;
         var reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -84,13 +75,13 @@ public class DiscoveryRestApi {
                     break;
 
             } catch (IOException e) {
-                System.out.println("Unable to read line");
+                LOGGER.debug("Unable to read line");
             }
         }
         if(line == null){
             return false;
         }
-        System.out.println(line);
+        LOGGER.info(line);
         var pattern = Pattern.compile("%[a-zA-Z]+ = [0-9]\\/[0-9]\\/[0-9]%");
         var matcher = pattern.matcher(line);
         //System.out.println(matcher.group());
@@ -105,7 +96,7 @@ public class DiscoveryRestApi {
                 return false ;
             }
         }else{
-            System.out.println("Discovery Match not found");
+            LOGGER.debug("Discovery Match not found");
             return false;
         }
 
