@@ -1,4 +1,6 @@
 package com.mindarray.nms.httpRequest;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
@@ -11,36 +13,46 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 public class DiscoveryRestApi {
     private static final Logger LOGGER = LoggerFactory.getLogger(DiscoveryRestApi.class);
-    public static void attach(Router router) {
+    public static Future<JsonObject> attach(Router router) {
         LOGGER.debug("Discovery Rest API called");
+
+        Promise<JsonObject> promise = Promise.promise();
         router.route().method(HttpMethod.POST).path("/discovery").blockingHandler(context -> {
+            StringBuilder message = new StringBuilder();
+            StringBuilder exception = new StringBuilder();
             var credentials = new JsonObject();
              credentials = context.getBodyAsJson();
             String error = verifyCredential(credentials);
-            HttpServerResponse response = context.response();
-            response.setChunked(true);
+
+            //HttpServerResponse response = context.response();
+            //response.setChunked(true);
             if(error.equals("No error")){
                 LOGGER.info("Credentials verified successfully");
-                response.write("Credentials verified successfully");
+                message.append("Credentials verified successfully ");
                 boolean available = checkAvailability(credentials.getString("IP_Address"));
                 if(available){
                     LOGGER.info("Initial Discovery successful");
-                    response.write("\nInitial Discovery successful");
+                    message.append("\nInitial Discovery successful");
                     // Plugin call karke final discovery call karna baki hain
                 }else{
-                    response.write("\nError : Initial Discovery failed");
+                    exception.append("\nError : Initial Discovery failed");
                     LOGGER.error("Initial Discovery failed");
                 }
             }else{
-                response.write("Error:"+error);
-                LOGGER.error("Error"+ error);
+                exception.append(error);
+                LOGGER.error("Error :"+ error);
             }
-            response.end();
+           credentials.put("Message :",message.toString());
+            credentials.put("Error :", exception.toString());
+            promise.complete(credentials);
+
         });
+        return promise.future();
 
     }
 
