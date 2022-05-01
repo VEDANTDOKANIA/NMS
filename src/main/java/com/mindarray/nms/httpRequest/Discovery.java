@@ -8,44 +8,50 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.regex.Pattern;
 
 public class Discovery {
     private static final Logger LOGGER = LoggerFactory.getLogger(Discovery.class);
     public static Future<JsonObject> initialDiscovery(JsonObject data) {
-        LOGGER.debug("Discovery Rest API called");
+
+        JsonObject result = new JsonObject();
+        LOGGER.info("Discovery Rest API called");
         Promise<JsonObject> promise = Promise.promise();
         var credentials = data;
         String error = verifyCredential(credentials);
-        StringBuilder message = new StringBuilder();
-        StringBuilder exception = new StringBuilder();
         if (error.equals("No error")) {
             LOGGER.info("Credentials verified successfully");
-            message.append("Credentials verified successfully. \n ");
+            result.put("Verification","Successful");
+            //message.append("Credentials verified successfully. \n ");
             boolean available = checkAvailability(credentials.getString("IP_Address"));
             if (available) {
                 LOGGER.info("Initial Discovery successful");
-                message.append("Device is available");
-                // Plugin call karke final discovery call karna baki hain
+                result.put("Availability","Successful");
+                String line = getDiscovery(credentials);
+                JsonObject pluginData = new JsonObject(line);
+                System.out.println(pluginData.getString("Error"));
+                if(pluginData.getString("Error").equals("no")){
+                    result.put("Discovery","Successful");
+                }else{
+                    result.put("Discovery","Unsuccessful");
+                    result.put("Discovery Error:",pluginData.getString("Error"));
+                }
             } else {
-                exception.append("Error : Initial Discovery failed");
+                result.put("Availability","Unsuccessful");
                 LOGGER.error("Initial Discovery failed");
             }
         } else {
-            exception.append(error);
+            result.put("Verification", "Unsuccessful");
+            result.put("Verification Error" ,error);
             LOGGER.error("Error :" + error);
         }
-        if(exception.isEmpty()){
-            exception.append("null");
-        }
-        credentials.put("Message", message.toString());
-        credentials.put("Error", exception.toString());
-        promise.complete(credentials);
+        promise.complete(result);
         return promise.future();
     }
-
 
     private static boolean checkAvailability(String ip_address) {
         List<String> Commands = new ArrayList<>();
@@ -56,6 +62,7 @@ public class Discovery {
         Commands.add(4,"1000");
         Commands.add(5,"-q");
         Commands.add(ip_address);
+
      ProcessBuilder builder = new ProcessBuilder();
      builder.command(Commands);
      builder.redirectErrorStream(true);
@@ -63,7 +70,7 @@ public class Discovery {
         try {
             process = builder.start();
         } catch (IOException e) {
-            LOGGER.debug("Unable to start builder for discovery");
+            LOGGER.info("Unable to start builder for discovery");
         }
         assert process != null;
         var reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -75,7 +82,7 @@ public class Discovery {
                     break;
 
             } catch (IOException e) {
-                LOGGER.debug("Unable to read line");
+                LOGGER.info("Unable to read line");
             }
         }
         if(line == null){
@@ -96,12 +103,11 @@ public class Discovery {
                 return false ;
             }
         }else{
-            LOGGER.debug("Discovery Match not found");
+            LOGGER.info("Discovery Match not found");
             return false;
         }
 
     }
-
     private static String verifyCredential(JsonObject credentials) {
         if(credentials.containsKey("IP_Address")==false || credentials.containsKey("Metric_Type")==false){
             String error = "Wrong IP_Address or metric type. Pls verify the same and try again";
@@ -133,9 +139,31 @@ public class Discovery {
         }
 
         String error = "No error";
-        LOGGER.debug(error);
+        LOGGER.info(error);
         return error;
 
 
+    }
+
+    private static String getDiscovery(JsonObject credentials) {
+        String encoded = (Base64.getEncoder().encodeToString(credentials.toString().getBytes(StandardCharsets.UTF_8)));
+        String line;
+        StringBuilder result = new StringBuilder();
+        try {
+            var process = new ProcessBuilder("src/main/java/com/mindarray/nms/main/plugin.exe", encoded).start();
+            var processInputStream = process.getInputStream();
+            var reader = new BufferedReader(new InputStreamReader(processInputStream));
+            line = null;
+
+            while ((line = reader.readLine()) != null) {
+               // System.out.println(line);
+                result.append(line);
+            }
+
+        } catch (Exception e) {
+            return e.getCause().getMessage();
+        }
+        System.out.println(result.toString());
+        return result.toString();
     }
 }

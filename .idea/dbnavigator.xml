@@ -32,9 +32,7 @@
     </connection>
   </component>
   <component name="DBNavigator.Project.DatabaseFileManager">
-    <open-files>
-      <object connection-id="cf4938d4-f6d4-49e2-9622-6d20554a6f9f" object-ref="schemas/nms/tables/monitor" />
-    </open-files>
+    <open-files />
   </component>
   <component name="DBNavigator.Project.DatabaseSessionManager">
     <connection id="cf4938d4-f6d4-49e2-9622-6d20554a6f9f" />
