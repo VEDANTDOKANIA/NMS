@@ -33,7 +33,7 @@ public class Discovery {
                 result.put("Availability","Successful");
                 String line = getDiscovery(credentials);
                 JsonObject pluginData = new JsonObject(line);
-                System.out.println(pluginData.getString("Error"));
+
                 if(pluginData.getString("Error").equals("no")){
                     result.put("Discovery","Successful");
                 }else{
@@ -163,7 +163,6 @@ public class Discovery {
         } catch (Exception e) {
             return e.getCause().getMessage();
         }
-        System.out.println(result.toString());
         return result.toString();
     }
 }

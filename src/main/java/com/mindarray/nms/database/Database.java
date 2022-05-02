@@ -1,6 +1,5 @@
 package com.mindarray.nms.database;
 
-import com.mindarray.nms.httpRequest.HttpListener;
 import com.mindarray.nms.main.SecureRandomString;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
@@ -19,7 +18,7 @@ public class Database extends AbstractVerticle {
     @Override
     public void start(Promise<Void> startPromise) throws Exception {
         LOGGER.info("Database Verticle Deployed");
-       var connection = DatabaseCommand.connect(); //To connect with database
+       var connection = DatabaseFunctions.connect(); //To connect with database
        var statement = connection.createStatement();
         EventBus eventBus = vertx.eventBus();
         eventBus.consumer("check",handler ->{
@@ -69,12 +68,46 @@ public class Database extends AbstractVerticle {
                         LOGGER.debug("Error in insertion in poller table");
                     }
                 });
-
-               // System.out.println(query);
+                var data = DatabaseFunctions.getCredentials(credentials);
+                eventBus.request("DiscoveryOccurred",data,pollingHandler->{
+               if(pollingHandler.succeeded()){
+                   LOGGER.info("New Data Sent for Polling");
+               }
+               LOGGER.info(pollingHandler.result().body().toString());
+                });
                 handler.reply("successful");
             }catch (Exception e){
                 LOGGER.info("Exception Occurred :"+e.getMessage());
                 handler.reply(e.getMessage());
+            }
+        });
+        eventBus.consumer("PollingCredentials",handler ->{
+
+            var credentials = new JsonObject();
+            try {
+                statement.execute("use nms");
+                ResultSet resultSet = statement.executeQuery("select poller.Credential_id , poller.IP_address ,poller.Metric_type ,poller.Metric_group,poller.Scheduled_time, poller.Group_status, monitor.username,monitor.password,monitor.port,monitor.community,monitor.version from monitor, poller where monitor.IP_address = poller.Ip_address ;");
+                while (resultSet.next()){
+                    var data = new JsonObject();
+                    data.put("IP_Address",resultSet.getString(2));
+                    data.put("Metric_Type",resultSet.getString(3));
+                    data.put("Metric_Group",resultSet.getString(4));
+                    data.put("Scheduled_Time", resultSet.getInt(5));
+                    data.put("Group_status",resultSet.getString(6));
+                    if(data.getString("Metric_Type").equals("linux") || data.getString("Metric_Type").equals("windows")){
+                        data.put("username",resultSet.getString(7));
+                        data.put("password",resultSet.getString(8));
+                        data.put("Port", resultSet.getInt(9));
+                    }else{
+                        data.put("Port", resultSet.getInt(9));
+                        data.put("community",resultSet.getString(10));
+                        data.put("version", resultSet.getString(11));
+                    }
+                    credentials.put(resultSet.getString(1),data );
+                }
+                handler.reply(credentials);
+            } catch (SQLException e) {
+                LOGGER.error(e.getCause().getMessage());
             }
         });
         startPromise.complete();

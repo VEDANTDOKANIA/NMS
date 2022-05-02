@@ -30,7 +30,6 @@ public class HttpListener extends AbstractVerticle {
         router.route().handler(BodyHandler.create());
         router.route().method(HttpMethod.POST).path("/discovery").blockingHandler(context ->{
             HttpServerResponse response = context.response();
-            AtomicReference<String> check = null;
             response.setChunked(true);
             var credentials = context.getBodyAsJson();
             credentials.put("category","Discovery");

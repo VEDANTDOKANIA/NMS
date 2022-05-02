@@ -2,6 +2,7 @@ package com.mindarray.nms.database;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
+import io.vertx.core.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +14,8 @@ public class Initial extends AbstractVerticle {
     public static final String INSERT = "insert into table columns data ;";
     @Override
     public void start(Promise<Void> startPromise) throws Exception {
-        var conn = DatabaseCommand.connect();
+        var eventBus = vertx.eventBus();
+        var conn = DatabaseFunctions.connect();
         var stmt = conn.createStatement();
         String databaseCheck = "show databases like" + " \"nms\";" ;
         try {
@@ -24,7 +26,22 @@ public class Initial extends AbstractVerticle {
             }
             if(value.equals("nms")){
                 LOGGER.info("Database Already Exists");
-            }else{
+                eventBus.request("PollingCredentials","Database Available",handler->{
+                    if(handler.succeeded()){
+                        JsonObject credential = new JsonObject( handler.result().body().toString());
+                        eventBus.request("Poller",credential,result->{
+                            if(result.succeeded()){
+                                LOGGER.info("Data Sent for Polling");
+                            }else{
+                                LOGGER.info("Unable to sent data for Polling");
+                            }
+                        });
+                    }
+
+                });
+
+            }
+            else{
                 String createDatabase = "create database nms;" ;
                 String createMonitor ="create table monitor (IP_address varchar(50), Metric_type varchar(90), username varchar(90), password varchar(90), port int , community varchar(90) , version varchar(90),Primary key (IP_address) );";
                 String createMetric ="create table metric (Metric_type varchar(90), Metric_group varchar(90), time int);";
